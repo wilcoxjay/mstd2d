@@ -151,11 +151,12 @@ int main(int argc, char **argv) {
     (void)argv;
 
     unsigned long long i = 7130732;
-    for (i = 0; i < (1LL << (1 << N)); ++i) {
+    for (i = 0; i < (1LL << (N*N)); ++i) {
 	make_set(my_set, i);
 	if (is_mstd(my_set)) {
 	    print_set(my_set);
 	    printf("    (with seed %lld)\n", i);
+	    fflush(stdout);
 
 	}
     }
