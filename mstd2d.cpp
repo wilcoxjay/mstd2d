@@ -13,10 +13,6 @@ g++ -DNDEBUG -O3 -march=native -mtune=native -Wall -Wextra -Werror -o mstd2d mst
 #define YSIZE 5
 #define DOUBLE(x) (2*x + 1)
 
-
-
-// 4x6, 3x8, 2x12
-
 static Set2d<DOUBLE(XSIZE),DOUBLE(YSIZE)> sum_set;
 static Set2d<DOUBLE(XSIZE),DOUBLE(YSIZE)> diff_set;
 
@@ -31,7 +27,6 @@ int is_mstd(Set2d<X,Y>& set) {
             if (!set.contains(i1, j1)) {
                 continue;
             }
-            //printf ("(%d,%d) is in the set.\n", i1, j1);
             for (i2 = i1; i2 < X; ++i2) {
                 int s1  = i1 + i2;
                 int d11 = i1 - i2 + X;
@@ -41,34 +36,13 @@ int is_mstd(Set2d<X,Y>& set) {
                     if (!set.contains(i2, j2)) {
                         continue;
                     }
-                    //printf ("(%d,%d) is in the set.\n", i2, j2);
                     int s2  = j1 + j2;
                     int d12 = j1 - j2 + Y;
                     int d22 = j2 - j1 + Y;
 
-                    // printf("(%d,%d) + (%d,%d) = (%d,%d)\n", i1, j1, i2, j2, s1, s2);
-                    // printf("(%d,%d) - (%d,%d) = (%d,%d)\n", i1, j1, i2, j2, d11-X, d12-Y);
-                    // printf("(%d,%d) - (%d,%d) = (%d,%d)\n", i2, j2, i1, j1, d21-X, d22-Y);
-
-                    // printf("s(%d,%d)\n", s1, s2);
-                    // printf("d(%d,%d)\n", d11-N, d12-N);
-                    // printf("d(%d,%d)\n", d21-N, d22-N);
-
-
-                    // if (!sum_set.contains(s1,s2) ||
-                    //     !diff_set.contains(d11,d12) ||
-                    //     !diff_set.contains(d21,d22)) {
-                    //     std::cout << "error on ("
-                    //               << i1 << ","
-                    //               << j1 << ") ("
-                    //               << i2 << ","
-                    //               << j1 << ")"
-                    //               << std::endl;
-                    // }
-
-                     sum_set.add(s1,s2);
-                     diff_set.add(d11,d12);
-                     diff_set.add(d21,d22);
+                    sum_set.add(s1,s2);
+                    diff_set.add(d11,d12);
+                    diff_set.add(d21,d22);
                 }
             }
         }
@@ -124,9 +98,6 @@ int main(int argc, char **argv) {
     std::cout << "thread id " << id << "searching from "
               << start << " to " << end << std::endl;
     for (i = start; i < end ; ++i) {
-        //if (i % 100000 == 0) {
-        //    std::cout << "iteration " << i << std::endl;
-        //}
         make_set(my_set, i);
         if (is_mstd(my_set)) {
             my_set.print();
