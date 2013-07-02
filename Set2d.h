@@ -21,9 +21,9 @@ protected:
     }
 
 public:
-    int  m_sparse_x[X*Y];
-    int  m_sparse_y[X*Y];
-    int  m_sparse_size;
+    // int  m_sparse_x[X*Y];
+    // int  m_sparse_y[X*Y];
+    // int  m_sparse_size;
 
 
     inline char* unsafe_get_data() {
