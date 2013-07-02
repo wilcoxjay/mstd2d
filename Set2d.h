@@ -21,11 +21,6 @@ protected:
     }
 
 public:
-    // int  m_sparse_x[X*Y];
-    // int  m_sparse_y[X*Y];
-    // int  m_sparse_size;
-
-
     inline char* unsafe_get_data() {
         return m_data;
     }
@@ -49,22 +44,6 @@ public:
         memset(m_data, 0, X*Y);
     }
     
-    // inline void init_sparse() {
-    //     int k = 0;
-    //     for (unsigned int i = 0; i < X; ++i) {
-    //         for (unsigned int j = 0; j < Y; ++j) {
-    //             if (contains(i,j)) {
-    //                 m_sparse_x[k] = i;
-    //                 m_sparse_y[k] = j;
-    //                 k++;
-    //             }
-    //         }
-    //     }
-    //     m_sparse_size = k;
-    // }
-
-
-
     void print() const {
         std::cout << "{";
         bool started = false;
