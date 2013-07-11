@@ -1,5 +1,5 @@
 /**
-g++ -DNDEBUG -O3 -march=native -mtune=native -Wall -Wextra -Werror -o mstd2d mstd2d.cpp
+g++ -DNDEBUG -O3 -march=native -mtune=native -Wall -Wextra -Werror -Wconversion -o mstd2d mstd2d.cpp
 
  */
 

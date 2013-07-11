@@ -160,4 +160,13 @@ DEFINE_VEC_BINARY_SCALAR(+)
 DEFINE_VEC_BINARY_SCALAR(-)
 DEFINE_VEC_BINARY_SCALAR(*)
 
+template <int N>
+inline vec<N> operator-(const vec<N>& v) {
+    vec<N> result = v;
+    for (int i = 0; i < N; ++i) {
+        result[i] = -result[i];
+    }
+    return result;
+}
+
 #endif  // vec_h

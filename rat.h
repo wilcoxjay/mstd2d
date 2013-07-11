@@ -131,5 +131,11 @@ inline void rat::reduce() {
     num *= sign;
 }
 
+inline rat operator-(const rat& a) {
+    rat result = a;
+    result.num = -result.num;
+    return result;
+}
+
 
 #endif  // rat_h

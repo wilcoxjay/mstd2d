@@ -5,109 +5,53 @@
 
 #include "rat.h"
 #include "vec.h"
+#include "set.h"
+#include "setset.h"
 
-
-#define DIM 7
-
-class set {
-private:
-    vec<DIM> data[DIM];
-public:
-    int projections;
-
-    set() : projections(0) { }
-
-    inline const vec<DIM>& operator[](int i) const { return data[i]; }
-    inline       vec<DIM>& operator[](int i)       { return data[i]; }
-};
-
-/**
-   Note that this does not take into account the number of
-   projections.
- */
-inline bool operator==(const set& lhs, const set& rhs) {
-    for (int i = 0; i < DIM; ++i) {
-        if (lhs[i] != rhs[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-inline bool operator!=(const set& lhs, const set& rhs) {
-    return !operator==(lhs,rhs);
-}
-
-std::ostream& operator<<(std::ostream& os, const set& s) {
-    bool started = false;
-    os << "{" << std::endl;;
-    for (int i = 0; i < DIM; ++i) {
-        if (started) {
-            os << "," << std::endl;
-        }
-        started = true;
-        os << "    " << s[i];
-    }
-
-    os << "  | " << s.projections << std::endl << "}";
-
-    return os;
-}
-
-
-/**
-   a poorly named wrapper to treat std::vector as a set. that is, it
-   contains no duplicates and does not expose its order.
-*/
-class setset {
-private:
-    std::vector<set> sets;
-public:
-    void add(const set& s);
-    bool contains(const set& s) const;
-    std::vector<set>::iterator begin() {
-        return sets.begin();
-    }
-    std::vector<set>::iterator end() {
-        return sets.end();
-    }
-    void clear() {
-        sets.clear();
-    }
-    int size() const {
-        return sets.size();
-    }
-
-    friend std::ostream& operator<<(std::ostream& os, const setset& ss);
-};
-
-void setset::add(const set& s) {
-    if (!contains(s)) {
-        sets.push_back(s);
-    }
-}
-
-bool setset::contains(const set& s) const {
-    for ( auto i : sets) {
-        if (i == s) {
+bool contains(const std::vector< vec<DIM> >& set, const vec<DIM>& v) {
+    for (auto i : set) {
+        if (i == v) {
             return true;
         }
     }
     return false;
 }
-std::ostream& operator<<(std::ostream& os, const setset& ss) {
-    os << "{" << std::endl;
-    bool started = false;
-    for (auto i : ss.sets) {
-        if (started) {
-            os << "," << std::endl;
-        }
-        started = true;
-        os << i;
+
+void add(std::vector< vec<DIM> >& set, const vec<DIM>& v) {
+    if (!contains(set, v)) {
+        set.push_back(v);
     }
-    os << std::endl << "}" << std::endl;
-    return os;
 }
+
+bool is_mstd(const set& s) {
+    static std::vector< vec<DIM> > sumset;
+    static std::vector< vec<DIM> > diffset;
+    sumset.clear();
+    diffset.clear();
+    
+    for (int i = 0; i < DIM; ++i) {
+        for (int j = i; j < DIM; ++j) {
+            add(sumset, s[i] + s[j]);
+            add(diffset, s[i] - s[j]);
+            add(diffset, s[j] - s[i]);
+        }
+    }
+
+    // std::cout << "sumset = " << std::endl;
+    // for (auto v : sumset) {
+    //     std::cout << "  " << v << std::endl;
+    // }
+    // std::cout << "diffset = " << std::endl;
+    // for (auto v : diffset) {
+    //     std::cout << "  " << v << std::endl;
+    // }
+
+    // std::cout << "sumset.size = "  << sumset.size()  << std::endl;
+    // std::cout << "diffset.size = " << diffset.size() << std::endl;
+
+    return sumset.size() > diffset.size();
+}
+
 
 
 void search(const set& start) {
@@ -152,6 +96,13 @@ void search(const set& start) {
 
         std::cout << current->size() << " sets of depth " << depth << std::endl
                   << *current << std::endl;
+
+        for (auto i : *current) {
+            if (is_mstd(i)) {
+                std::cout << "MSTD set!" << std::endl;
+                std::cout << i << std::endl;
+            }
+        }
     }
     
 }
