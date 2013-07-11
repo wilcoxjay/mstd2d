@@ -1,3 +1,4 @@
+#include <vector>
 #include <iostream>
 #include <cassert>
 #include <cstdlib>
@@ -20,6 +21,23 @@ public:
     inline       vec<DIM>& operator[](int i)       { return data[i]; }
 };
 
+/**
+   Note that this does not take into account the number of
+   projections.
+ */
+inline bool operator==(const set& lhs, const set& rhs) {
+    for (int i = 0; i < DIM; ++i) {
+        if (lhs[i] != rhs[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool operator!=(const set& lhs, const set& rhs) {
+    return !operator==(lhs,rhs);
+}
+
 std::ostream& operator<<(std::ostream& os, const set& s) {
     bool started = false;
     os << "{" << std::endl;;
@@ -37,46 +55,105 @@ std::ostream& operator<<(std::ostream& os, const set& s) {
 }
 
 
+/**
+   a poorly named wrapper to treat std::vector as a set. that is, it
+   contains no duplicates and does not expose its order.
+*/
+class setset {
+private:
+    std::vector<set> sets;
+public:
+    void add(const set& s);
+    bool contains(const set& s) const;
+    std::vector<set>::iterator begin() {
+        return sets.begin();
+    }
+    std::vector<set>::iterator end() {
+        return sets.end();
+    }
+    void clear() {
+        sets.clear();
+    }
+    int size() const {
+        return sets.size();
+    }
 
+    friend std::ostream& operator<<(std::ostream& os, const setset& ss);
+};
 
-void search(const set& s) {
-    static long long calls = 0;
-    calls++;
+void setset::add(const set& s) {
+    if (!contains(s)) {
+        sets.push_back(s);
+    }
+}
 
-    for (int i = 0;   i < DIM; ++i) {
-    for (int j = i+1; j < DIM; ++j) {
-    for (int k = j+1; k < DIM; ++k) {
-    for (int l = k+1; l < DIM; ++l) {
-        if (s.projections < 2) {
-            std::cerr << "depth = " << s.projections << " calls = " << calls  << " i = " << i << " j = " << j << " k = " << k << " l = " << l << std::endl;
-        }
-
-        vec<DIM> v = (s[i] - s[j]) - (s[k] - s[l]);
-        
-        if (v.is_zero()) continue;
-
-        if (v.has_NaN() || v.has_infty()) {
-            std::cerr << "ran into badness while trying to process " << s << std::endl
-                      << "while computing with i,j,k,l = "
-                      << i << "," << j << "," << k << "," << l << std::endl;
-            continue;
-        }
-
-        set t = s;
-        for (int x = 0; x < DIM; ++x) {
-            t[x] -= t[x].proj_onto(v);
-        }
-        t.projections++;
-
-        if (t.projections == 2) {
-            std::cout << "finished searching " << t << std::endl;
-        } else {
-            search(t);
+bool setset::contains(const set& s) const {
+    for ( auto i : sets) {
+        if (i == s) {
+            return true;
         }
     }
+    return false;
+}
+std::ostream& operator<<(std::ostream& os, const setset& ss) {
+    os << "{" << std::endl;
+    bool started = false;
+    for (auto i : ss.sets) {
+        if (started) {
+            os << "," << std::endl;
+        }
+        started = true;
+        os << i;
     }
+    os << std::endl << "}" << std::endl;
+    return os;
+}
+
+
+void search(const set& start) {
+    setset a, b;
+    setset* current = &a;
+    setset* next    = &b;
+
+    current->add(start);
+
+    for (int depth = 0; depth < DIM; ++depth) {
+        std::cerr << "starting iteration." << std::endl
+                  << "    depth        = " << depth           << std::endl
+                  << "    current.size = " << current->size() << std::endl
+                  << "    next.size    = " << next->size()
+                  << std::endl;
+        for (auto s : *current) {
+            for (int i = 0;   i < DIM; ++i) {
+            for (int j = i+1; j < DIM; ++j) {
+            for (int k = j+1; k < DIM; ++k) {
+            for (int l = k+1; l < DIM; ++l) {
+
+                vec<DIM> v = (s[i] - s[j]) - (s[k] - s[l]);
+
+                if (v.is_zero()) continue;
+
+                assert(!(v.has_NaN() || v.has_infty()));
+
+                set t = s;
+                for (int x = 0; x < DIM; ++x) {
+                    t[x] -= t[x].proj_onto(v);
+                }
+                t.projections++;
+
+                next->add(t);
+            }
+            }
+            }
+            }
+        }
+        current->clear();
+        std::swap(current, next);
+
+        std::cout << current->size() << " sets of depth " << depth << std::endl
+                  << *current << std::endl;
     }
-    }
+    
 }
 
 int main() {
