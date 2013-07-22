@@ -7,6 +7,8 @@
 #include <ctime>
 
 
+#include <omp.h>
+
 int read_int_or_error(int argc, char** argv) {
     int result;
     if (argc == 0) {
@@ -46,13 +48,6 @@ int N = 100;
 double p = 0.5;
 bool print_sets = true;
 bool try_all = false;
-
-char *set;
-char *sumset;
-char *diffset;
-
-int sum_count;
-int diff_count;
 
 void process_args(int argc, char **argv) {
     --argc; ++argv;
@@ -102,10 +97,11 @@ void process_args(int argc, char **argv) {
     }
 }
 
-bool is_mstd() {
+bool is_mstd(const char* set, char* sumset, char* diffset, int *sum_count, int *diff_count) {
     memset(sumset, 0, 2*N);
     memset(diffset, 0, 2*N);
 
+    int sums, diffs;
     for (int i = 0; i < N; ++i) {
         if (set[i] == 0) continue;
         for (int j = i; j < N; ++j) {
@@ -116,17 +112,20 @@ bool is_mstd() {
         }
     }
 
-    sum_count = 0;
-    diff_count = 0;
+    sums = 0;
+    diffs = 0;
     for (int i = 0; i < 2*N; ++i) {
-        sum_count += sumset[i];
-        diff_count += diffset[i];
+        sums += sumset[i];
+        diffs += diffset[i];
     }
 
-    return sum_count > diff_count;
+    *sum_count = sums;
+    *diff_count = diffs;
+
+    return sums > diffs;
 }
 
-void seedFast(G3D::Random& r) {
+void seedFast(G3D::Random& r, char* set) {
     G3D::uint32 data = r.bits();
     for (int i = 0; i < N; ++i) {
         if (i % 32 == 31) {
@@ -137,7 +136,7 @@ void seedFast(G3D::Random& r) {
     }
 }
 
-void seedProb(G3D::Random& r) {
+void seedProb(G3D::Random& r, char* set) {
     for (int i = 0; i < N; ++i) {
         if (r.uniform() < p) {
             set[i] = 1;
@@ -147,14 +146,14 @@ void seedProb(G3D::Random& r) {
     }
 }
 
-void seed(long long s) {
+void seed(long long s, char* set) {
     for (int i = 0; i < N; ++i) {
         set[i] = s & 1;
         s >>= 1;
     }
 }
 
-int count_set() {
+int count_set(const char* set) {
     int result = 0;
     for (int i = 0; i < N; ++i) {
         result += set[i];
@@ -162,7 +161,7 @@ int count_set() {
     return result;
 }
 
-void print_set() {
+void print_set(const char* set) {
     std::cout << "{";
     bool started = false;
     for (int i = 0; i < N; ++i) {
@@ -179,39 +178,53 @@ void print_set() {
 }
 
 int main(int argc, char **argv) {
-    time_t t = time(0);
-
-    G3D::Random r((G3D::uint32)t);
-
     process_args(argc, argv);
 
-    set     = (char*)malloc(N);
-    sumset  = (char*)malloc(2*N);
-    diffset = (char*)malloc(2*N);
 
     int num_mstds = 0;
-    for (long long i = 0; i < NUM_TRIALS; ++i) {
-        if (REPORT_FREQ > 0 && i % REPORT_FREQ == 0) {
-            std::cerr << "i = " << i << std::endl;
-        }
 
-        if (try_all) {
-            seed(i);
-        } else {
-            if (fabs(p - 0.5) < 0.001) {
-                seedFast(r);
+    #pragma omp parallel
+    {
+        time_t t = time(0);
+
+        G3D::Random r((G3D::uint32)t + 13 * omp_get_thread_num());
+        int my_num_mstds = 0;
+
+        int sum_count, diff_count;
+
+        char *set     = (char*)malloc(N);
+        char *sumset  = (char*)malloc(2*N);
+        char *diffset = (char*)malloc(2*N);
+
+        #pragma omp for nowait
+        for (long long i = 0; i < NUM_TRIALS; ++i) {
+            if (REPORT_FREQ > 0 && i % REPORT_FREQ == 0) {
+                std::cerr << "i = " << i << std::endl;
+            }
+
+            if (try_all) {
+                seed(i, set);
             } else {
-                seedProb(r);
+                if (fabs(p - 0.5) < 0.001) {
+                    seedFast(r, set);
+                } else {
+                    seedProb(r, set);
+                }
             }
-        }
 
-        if (is_mstd()) {
-            num_mstds++;
-            if (print_sets) {
-                print_set();
-                std::cout << " (of size " << count_set() << ") has " << sum_count << " sums and " << diff_count << " differences." << std::endl;
+            if (is_mstd(set, sumset, diffset, &sum_count, &diff_count)) {
+                my_num_mstds++;
+                if (print_sets) {
+                    #pragma omp critical
+                    {
+                        print_set(set);
+                        std::cout << " (of size " << count_set(set) << ") has " << sum_count << " sums and " << diff_count << " differences." << std::endl;
+                    }
+                }
             }
         }
+        #pragma omp atomic
+        num_mstds += my_num_mstds;
     }
 
     std::cout << "done. found " << num_mstds << " after " << NUM_TRIALS << " trials. ratio = " << ((double)num_mstds)/((double)NUM_TRIALS) << std::endl;
