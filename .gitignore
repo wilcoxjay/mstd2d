@@ -1,3 +1,8 @@
 *~
 *.exe
 *.s
+G3D/
+*.bash
+*log*
+*.o
+*.py

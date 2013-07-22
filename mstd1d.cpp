@@ -42,12 +42,13 @@ double read_double_or_error(int argc, char** argv) {
 }
 
 
-int NUM_TRIALS = 1000000;
+long long NUM_TRIALS = 1000000LL;
 int REPORT_FREQ = 10000;
 int N = 100;
 double p = 0.5;
 bool print_sets = true;
 bool try_all = false;
+bool check = false;
 
 void process_args(int argc, char **argv) {
     --argc; ++argv;
@@ -74,7 +75,7 @@ void process_args(int argc, char **argv) {
         } else if (strcmp("-try-all", argv[0]) == 0) {
             --argc; ++argv;
             try_all = true;
-            NUM_TRIALS = 1 << N;
+            NUM_TRIALS = 1LL << N;
        } else if (strcmp("-help", argv[0]) == 0) {
             std::cout << "Options:" << std::endl
                       << "    -N NUM\t\tSample subsets of {0, ..., NUM-1}. (Default=" << N << ".)" << std::endl
@@ -181,14 +182,18 @@ int main(int argc, char **argv) {
     process_args(argc, argv);
 
 
-    int num_mstds = 0;
+    long long num_mstds = 0;
+    long long num_balanced = 0;
+    long long num_diffdom = 0;
 
-    #pragma omp parallel
+#pragma omp parallel
     {
         time_t t = time(0);
 
         G3D::Random r((G3D::uint32)t + 13 * omp_get_thread_num());
-        int my_num_mstds = 0;
+        long long my_num_mstds = 0;
+        long long my_num_balanced = 0;
+        long long my_num_diffdom = 0;
 
         int sum_count, diff_count;
 
@@ -196,7 +201,7 @@ int main(int argc, char **argv) {
         char *sumset  = (char*)malloc(2*N);
         char *diffset = (char*)malloc(2*N);
 
-        #pragma omp for nowait
+#pragma omp for nowait schedule(guided)
         for (long long i = 0; i < NUM_TRIALS; ++i) {
             if (REPORT_FREQ > 0 && i % REPORT_FREQ == 0) {
                 std::cerr << "i = " << i << std::endl;
@@ -221,11 +226,20 @@ int main(int argc, char **argv) {
                         std::cout << " (of size " << count_set(set) << ") has " << sum_count << " sums and " << diff_count << " differences." << std::endl;
                     }
                 }
+            } else if (sum_count == diff_count) {
+                my_num_balanced++;
+            } else {
+                my_num_diffdom++;
             }
         }
         #pragma omp atomic
         num_mstds += my_num_mstds;
+        #pragma omp atomic
+        num_balanced += my_num_balanced;
+        #pragma omp atomic
+        num_diffdom += my_num_diffdom;
     }
 
-    std::cout << "done. found " << num_mstds << " after " << NUM_TRIALS << " trials. ratio = " << ((double)num_mstds)/((double)NUM_TRIALS) << std::endl;
+    std::cout << "done. found (" << num_mstds << "," << num_balanced << "," << num_diffdom << ") (MSTD,bal,diff) sets after "
+              << NUM_TRIALS << " trials. ratio = " << ((double)num_mstds)/((double)NUM_TRIALS) << std::endl;
 }

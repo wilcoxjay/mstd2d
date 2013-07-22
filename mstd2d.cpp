@@ -3,50 +3,51 @@ g++ -DNDEBUG -O3 -march=native -mtune=native -Wall -Wextra -Werror -Wconversion 
 
  */
 
-#include "Set2d.h"
+#include "mstd2d.h"
+
+#include "DenseSet2d.h"
+#include "SparseSet2d.h"
 
 #include <iostream>
 
 #include <cstdlib>
 
-#define XSIZE 5
-#define YSIZE 5
-#define DOUBLE(x) (2*x + 1)
+static DenseSet2d<DOUBLE(XSIZE),DOUBLE(YSIZE)> sum_set;
+static DenseSet2d<DOUBLE(XSIZE),DOUBLE(YSIZE)> diff_set;
 
-static Set2d<DOUBLE(XSIZE),DOUBLE(YSIZE)> sum_set;
-static Set2d<DOUBLE(XSIZE),DOUBLE(YSIZE)> diff_set;
+#include <sys/time.h>
+timeval start, end;
+long long my_time = 0;
 
-template <unsigned int X, unsigned int Y>
-int is_mstd(Set2d<X,Y>& set) {
+inline void compute_sizes(const SparseSet2d& set, int& sum_size, int& diff_size) {
     sum_set.clear();
     diff_set.clear();
 
-    unsigned int i1, j1, i2, j2;
-    for (i1 = 0; i1 < X; ++i1) {
-        for (j1 = 0; j1 < Y; ++j1) {
-            if (!set.contains(i1, j1)) {
-                continue;
-            }
-            for (i2 = i1; i2 < X; ++i2) {
-                int s1  = i1 + i2;
-                int d11 = i1 - i2 + X;
-                int d21 = i2 - i1 + X;
-        
-                for (j2 = 0; j2 < Y; ++j2) {
-                    if (!set.contains(i2, j2)) {
-                        continue;
-                    }
-                    int s2  = j1 + j2;
-                    int d12 = j1 - j2 + Y;
-                    int d22 = j2 - j1 + Y;
+    typedef SparseSet2d::Point2 Point2;
 
-                    sum_set.add(s1,s2);
-                    diff_set.add(d11,d12);
-                    diff_set.add(d21,d22);
-                }
-            }
+    gettimeofday(&start, 0);
+    const Point2* data = set.getPoints();
+    for (int i = 0; i < set.size(); ++i) {
+        const Point2& p1 = data[i];
+        for (int j = i; j < set.size(); ++j) {
+            const Point2& p2 = data[j];
+
+            char sx = p1.x + p2.x;
+            char d1x = p1.x - p2.x;
+
+            char sy = p1.y + p2.y;
+            char d1y = p1.y - p2.y;
+
+
+            sum_set.add(sx,sy);
+            diff_set.add(d1x+XSIZE,d1y+YSIZE);
+            diff_set.add(XSIZE-d1x,YSIZE-d1y);
         }
     }
+    gettimeofday(&end, 0);
+
+    my_time += (end.tv_usec - start.tv_usec);
+    my_time >>= 1;
 
     int sums = 0;
     int diffs = 0;
@@ -57,52 +58,13 @@ int is_mstd(Set2d<X,Y>& set) {
         diffs += diff_data[i];
     }
 
+    sum_size = sums;
+    diff_size = diffs;
+    
+}
+
+bool is_mstd(const SparseSet2d& set) {
+    int sums, diffs;
+    compute_sizes(set, sums, diffs);
     return sums > diffs;
-}
-
-template <unsigned int X, unsigned int Y>
-void make_set(Set2d<X,Y>& s, unsigned long long seed) {
-    s.clear();
-
-    unsigned int i, j;
-    for (i = 0; i < X; ++i) {
-        for (j = 0; j < Y; ++j) {
-            int k = Y*i + j;
-            if ((seed >> k) & 1) {
-                s.add(i, j);
-            }
-        }
-    }
-}
-
-static Set2d<XSIZE, YSIZE> my_set;
-
-#define UPPER_BOUND (1LL << (XSIZE*YSIZE))
-
-int main(int argc, char **argv) {
-    int id;
-    unsigned long long step;
-    if (argc == 3) {
-        id = atoi(argv[1]);
-        int max = atoi(argv[2]);
-        step = ((UPPER_BOUND + max - 1) / max);
-    } else {
-        // default to searching whole space
-        id = 0;
-        step = UPPER_BOUND;  
-    }
-
-    unsigned long long i;
-    unsigned long long start = id * step;
-    unsigned long long end = (id + 1) * step;
-    std::cout << "thread id " << id << "searching from "
-              << start << " to " << end << std::endl;
-    for (i = start; i < end ; ++i) {
-        make_set(my_set, i);
-        if (is_mstd(my_set)) {
-            my_set.print();
-            std::cout << "    (with seed " << i << ")" << std::endl;
-        }
-    }
-    return 0;
 }
