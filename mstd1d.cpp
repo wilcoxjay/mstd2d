@@ -48,7 +48,6 @@ double read_double_or_error(int argc, char** argv) {
 
 
 long long NUM_TRIALS = 1000000LL;
-int REPORT_FREQ = 10000;
 int N = 100;
 double p = 0.5;
 bool print_mstds = true;
@@ -60,6 +59,7 @@ bool check = false;
 int fringe = 0;
 int removeLow = 0;
 int removeHi = -1;  // -1 so that we can check if enabled using removeLow <= removeHi
+bool verbose_remove = false;
 
 const char* conflicts[][2] = {{"-p", "-check"}, {"-trials", "-check"}, {"-report", "-check"}, {"-try-all", "-check"}, {"-no-print-sets", "-check"}};
 
@@ -91,10 +91,6 @@ void process_args(int argc, char **argv) {
         } else if (strcmp("-trials", argv[0]) == 0) {
             --argc; ++argv;
             NUM_TRIALS = read_int_or_error(argc, argv);
-            --argc; ++argv;
-        } else if (strcmp("-report", argv[0]) == 0) {
-            --argc; ++argv;
-            REPORT_FREQ = read_int_or_error(argc, argv);
             --argc; ++argv;
         } else if (strcmp("-no-print-mstds", argv[0]) == 0) {
             --argc; ++argv;
@@ -129,21 +125,23 @@ void process_args(int argc, char **argv) {
             --argc; ++argv;
             assert(removeHi >= removeLow);
             assert(removeHi < N);
-
-       } else if (strcmp("-help", argv[0]) == 0) {
+        } else if (strcmp("-verbose-remove", argv[0]) == 0) {
+            --argc; ++argv;
+            verbose_remove = true;
+        } else if (strcmp("-help", argv[0]) == 0) {
             std::cout << "Options:" << std::endl
                       << "    -N NUM\t\tSample subsets of {0, ..., NUM-1}. (Default=" << N << ".)" << std::endl
                       << "    -p PROB\t\tSample each element with probability PROB. (Default=" << p << ".)" << std::endl
                       << "    -trials NUM\t\tTake this many samples (Default=" << NUM_TRIALS << ".)" << std::endl
-                      << "    -report NUM\t\tPrint a 'still alive' message after every NUM trials (Default=" << REPORT_FREQ << ".) If 0, don't report." << std::endl
                       << "    -no-print-mstds\tDon't print when an MSTD set is found." << std::endl
-                      << "    -print-bals\tPrint when a balanced set is found." << std::endl
+                      << "    -print-bals\t\tPrint when a balanced set is found." << std::endl
                       << "    -print-diffdoms\tPrint when a difference dominated set is found." << std::endl
                       << "    -report-symmetry\tIf a set is going to be printed and is symmetric, append a note to that effect." << std::endl
                       << "    -try-all\t\tInstead of sampling randomly, just try every subset. Requires N < 64." << std::endl
                       << "    -check\t\tInstead of searching for MSTD sets, read sets one per line on stdin and compute sumsets and diffsets. (Default=" << check << ")." << std::endl
                       << "    -fringe NUM\t\tInstead of computing the entire sumset/diffset, compute only the contribution from the NUM-fringe. 0 to disable. (Default=" << fringe << ")." << std::endl
-                      << "    -remove LOW HI\t\tRemove all elements in range [LOW,HI], inclusive, before processing. Requires -check. (Default=[empty range])." << std::endl
+                      << "    -remove LOW HI\tRemove all elements in range [LOW,HI], inclusive, before processing. Requires -check. (Default=[empty range])." << std::endl
+                      << "    -verbose-remove\tReport which elements are actually removed. Only effective if -remove is thrown. (Default=" << verbose_remove << ")." << std::endl
                       << "    -help\t\tPrint this message" << std::endl;
 
             exit(0);
@@ -164,12 +162,33 @@ void process_args(int argc, char **argv) {
     }
 }
 
+void print_set(const char* set, int low = 0, int high = N) {
+    std::cout << "{";
+    bool started = false;
+    for (int i = low; i < high; ++i) {
+        if (set[i] != 0) {
+            if (started) {
+                std::cout << ", ";
+            }
+            started = true;
+
+            std::cout << i;
+        }
+    }
+    std::cout << "}" << std::endl;;
+}
+
 void do_remove(char* set) {
     assert(removeLow <= removeHi);
     assert (removeHi < N);
 
     int dist = removeHi - removeLow + 1;
-    for (int i = removeLow; i < N; i++) {
+
+    if (verbose_remove) {
+        std::cout << "removing ";
+        print_set(set, removeLow, removeHi+1);
+    }
+    for (int i = removeLow; i < N; ++i) {
         set[i] = i + dist < N ? set[i+dist] : 0;
     }
 }
@@ -301,21 +320,6 @@ bool symmetric(const char* set) {
     return true;
 }
 
-void print_set(const char* set) {
-    std::cout << "{";
-    bool started = false;
-    for (int i = 0; i < N; ++i) {
-        if (set[i] != 0) {
-            if (started) {
-                std::cout << ", ";
-            }
-            started = true;
-
-            std::cout << i;
-        }
-    }
-    std::cout << "}" << std::endl;;
-}
 
 void report(char *set, int sum_count, int diff_count) {
 #                       pragma omp critical
@@ -382,7 +386,7 @@ int main(int argc, char **argv) {
         char *diffset = (char*)malloc(2*N);
 
         if (check) {
-#pragma omp master
+#           pragma omp master
             {
                 NUM_TRIALS = 0;
                 while (1) {
@@ -405,13 +409,6 @@ int main(int argc, char **argv) {
         } else {
 #           pragma omp for nowait schedule(guided)
             for (long long i = 0; i < NUM_TRIALS; ++i) {
-                if (REPORT_FREQ > 0 && i % REPORT_FREQ == 0) {
-#                   pragma omp critical
-                    {
-                        std::cerr << "i = " << i << std::endl;
-                    }
-                }
-
                 if (try_all) {
                     seed(i, set);
                 } else {
