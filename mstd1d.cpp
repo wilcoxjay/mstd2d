@@ -52,10 +52,14 @@ int REPORT_FREQ = 10000;
 int N = 100;
 double p = 0.5;
 bool print_mstds = true;
+bool print_bals = false;
 bool print_diffdoms = false;
+bool report_symmetry = false;
 bool try_all = false;
 bool check = false;
 int fringe = 0;
+int removeLow = 0;
+int removeHi = -1;  // -1 so that we can check if enabled using removeLow <= removeHi
 
 const char* conflicts[][2] = {{"-p", "-check"}, {"-trials", "-check"}, {"-report", "-check"}, {"-try-all", "-check"}, {"-no-print-sets", "-check"}};
 
@@ -98,6 +102,12 @@ void process_args(int argc, char **argv) {
         } else if (strcmp("-print-diffdoms", argv[0]) == 0) {
             --argc; ++argv;
             print_diffdoms = true;
+        } else if (strcmp("-print-bals", argv[0]) == 0) {
+            --argc; ++argv;
+            print_bals = true;
+        } else if (strcmp("-report-symmetry", argv[0]) == 0) {
+            --argc; ++argv;
+            report_symmetry = true;
         } else if (strcmp("-try-all", argv[0]) == 0) {
             --argc; ++argv;
             try_all = true;
@@ -110,6 +120,16 @@ void process_args(int argc, char **argv) {
             fringe = read_int_or_error(argc, argv);
             assert(fringe > 0);
             --argc; ++argv;
+        } else if (strcmp("-remove", argv[0]) == 0) {
+            --argc; ++argv;
+            removeLow = read_int_or_error(argc, argv);
+            --argc; ++argv;
+            assert(removeLow >= 0);
+            removeHi = read_int_or_error(argc, argv);
+            --argc; ++argv;
+            assert(removeHi >= removeLow);
+            assert(removeHi < N);
+
        } else if (strcmp("-help", argv[0]) == 0) {
             std::cout << "Options:" << std::endl
                       << "    -N NUM\t\tSample subsets of {0, ..., NUM-1}. (Default=" << N << ".)" << std::endl
@@ -117,10 +137,13 @@ void process_args(int argc, char **argv) {
                       << "    -trials NUM\t\tTake this many samples (Default=" << NUM_TRIALS << ".)" << std::endl
                       << "    -report NUM\t\tPrint a 'still alive' message after every NUM trials (Default=" << REPORT_FREQ << ".) If 0, don't report." << std::endl
                       << "    -no-print-mstds\tDon't print when an MSTD set is found." << std::endl
+                      << "    -print-bals\tPrint when a balanced set is found." << std::endl
                       << "    -print-diffdoms\tPrint when a difference dominated set is found." << std::endl
+                      << "    -report-symmetry\tIf a set is going to be printed and is symmetric, append a note to that effect." << std::endl
                       << "    -try-all\t\tInstead of sampling randomly, just try every subset. Requires N < 64." << std::endl
                       << "    -check\t\tInstead of searching for MSTD sets, read sets one per line on stdin and compute sumsets and diffsets. (Default=" << check << ")." << std::endl
                       << "    -fringe NUM\t\tInstead of computing the entire sumset/diffset, compute only the contribution from the NUM-fringe. 0 to disable. (Default=" << fringe << ")." << std::endl
+                      << "    -remove LOW HI\t\tRemove all elements in range [LOW,HI], inclusive, before processing. Requires -check. (Default=[empty range])." << std::endl
                       << "    -help\t\tPrint this message" << std::endl;
 
             exit(0);
@@ -130,9 +153,24 @@ void process_args(int argc, char **argv) {
         }
     }
 
+    if (removeLow <= removeHi && !check) {
+        std::cout << "-remove requires -check" << std::endl;
+        exit(1);
+    }
+
     if (try_all && N >= 64) {
         std::cout << "Cannot try all subsets when N >= 64." << std::endl;
         exit(1);
+    }
+}
+
+void do_remove(char* set) {
+    assert(removeLow <= removeHi);
+    assert (removeHi < N);
+
+    int dist = removeHi - removeLow + 1;
+    for (int i = removeLow; i < N; i++) {
+        set[i] = i + dist < N ? set[i+dist] : 0;
     }
 }
 
@@ -201,7 +239,7 @@ bool is_fringe_mstd(int fringe, const char* set, char* sumset, char* diffset, in
         sums += sumset[i];
         diffs += diffset[i];
     }
-    for (int i = max(fringe, 2*N - fringe); i < 2*N ; ++i) {
+    for (int i = max(fringe, 2*N - fringe - 1); i < 2*N ; ++i) {
         sums += sumset[i];
         diffs += diffset[i];
     }
@@ -247,6 +285,21 @@ int count_set(const char* set) {
     }
     return result;
 }
+bool symmetric(const char* set) {
+    int maxI = 0;
+    for (int i = N-1; i >= 0; --i) {
+        if (set[i] != 0) {
+            maxI = i;
+            break;
+        }
+    }
+    for (int i = 0; i <= maxI; ++i) {
+        if (set[i] != set[maxI - i]) {
+            return false;
+        }
+    }
+    return true;
+}
 
 void print_set(const char* set) {
     std::cout << "{";
@@ -267,13 +320,13 @@ void print_set(const char* set) {
 void report(char *set, int sum_count, int diff_count) {
 #                       pragma omp critical
     {
-
-
-
         print_set(set);
         std::cout << " (of size " << count_set(set) << ") has " << sum_count << " sums and " << diff_count << " differences.";
         if (fringe > 0) {
             std::cout << " Note fringe size = " << fringe << ".";
+        }
+        if (report_symmetry && symmetric(set)) {
+            std::cout << " Note: this set is symmetric.";
         }
         std::cout << std::endl;
     }
@@ -295,6 +348,9 @@ void count_and_report(char* set, char* sumset, char* diffset, long long* mstd, l
         }
         (*mstd)++;
     } else if (sum_count == diff_count) {
+        if (print_bals) {
+            report(set, sum_count, diff_count);
+        }
         (*bal)++;
     } else {
         if (print_diffdoms) {
@@ -339,6 +395,9 @@ int main(int argc, char **argv) {
                     }
                     if (err == EOF) break;
                     NUM_TRIALS++;
+                    if (removeLow <= removeHi) {
+                        do_remove(set);
+                    }
                     count_and_report(set, sumset, diffset, &my_num_mstds, &my_num_balanced, &my_num_diffdom);
                     if (getchar() == EOF) break;  // otherwise, throw away one character and try for the next set
                 }
