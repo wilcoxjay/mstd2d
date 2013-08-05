@@ -1,8 +1,3 @@
-/**
-g++ -DNDEBUG -O3 -march=native -mtune=native -Wall -Wextra -Werror -Wconversion -o mstd2d mstd2d.cpp
-
- */
-
 #include "mstd2d.h"
 
 #include "DenseSet2d.h"
@@ -12,12 +7,15 @@ g++ -DNDEBUG -O3 -march=native -mtune=native -Wall -Wextra -Werror -Wconversion 
 
 #include <cstdlib>
 
-static DenseSet2d<DOUBLE(XSIZE),DOUBLE(YSIZE)> sum_set;
-static DenseSet2d<DOUBLE(XSIZE),DOUBLE(YSIZE)> diff_set;
+static DenseSet2d sum_set(DOUBLE(XSIZE),DOUBLE(YSIZE));
+static DenseSet2d diff_set(DOUBLE(XSIZE),DOUBLE(YSIZE));
 
 void compute_sizes(const SparseSet2d& set, int& sum_size, int& diff_size) {
     sum_set.clear();
     diff_set.clear();
+
+    const int X = diff_set.x()/2;
+    const int Y = diff_set.y()/2;
 
     typedef SparseSet2d::Point2 Point2;
 
@@ -35,8 +33,9 @@ void compute_sizes(const SparseSet2d& set, int& sum_size, int& diff_size) {
 
 
             sum_set.add(sx,sy);
-            diff_set.add(d1x+XSIZE,d1y+YSIZE);
-            diff_set.add(XSIZE-d1x,YSIZE-d1y);
+
+            diff_set.add(d1x + X, d1y + Y);
+            diff_set.add(X - d1x, Y - d1y);
         }
     }
 
@@ -44,7 +43,7 @@ void compute_sizes(const SparseSet2d& set, int& sum_size, int& diff_size) {
     int diffs = 0;
     char *sum_data = sum_set.unsafe_get_data();
     char *diff_data = diff_set.unsafe_get_data();
-    for (unsigned int i = 0; i < DOUBLE(XSIZE) * DOUBLE(YSIZE); ++i) {
+    for (int i = 0; i < sum_set.x() * sum_set.y(); ++i) {
         sums += sum_data[i];
         diffs += diff_data[i];
     }
