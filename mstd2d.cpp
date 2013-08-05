@@ -15,17 +15,12 @@ g++ -DNDEBUG -O3 -march=native -mtune=native -Wall -Wextra -Werror -Wconversion 
 static DenseSet2d<DOUBLE(XSIZE),DOUBLE(YSIZE)> sum_set;
 static DenseSet2d<DOUBLE(XSIZE),DOUBLE(YSIZE)> diff_set;
 
-#include <sys/time.h>
-timeval start, end;
-long long my_time = 0;
-
-inline void compute_sizes(const SparseSet2d& set, int& sum_size, int& diff_size) {
+void compute_sizes(const SparseSet2d& set, int& sum_size, int& diff_size) {
     sum_set.clear();
     diff_set.clear();
 
     typedef SparseSet2d::Point2 Point2;
 
-    gettimeofday(&start, 0);
     const Point2* data = set.getPoints();
     for (int i = 0; i < set.size(); ++i) {
         const Point2& p1 = data[i];
@@ -44,10 +39,6 @@ inline void compute_sizes(const SparseSet2d& set, int& sum_size, int& diff_size)
             diff_set.add(XSIZE-d1x,YSIZE-d1y);
         }
     }
-    gettimeofday(&end, 0);
-
-    my_time += (end.tv_usec - start.tv_usec);
-    my_time >>= 1;
 
     int sums = 0;
     int diffs = 0;
