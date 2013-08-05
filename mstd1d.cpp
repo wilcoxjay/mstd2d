@@ -60,6 +60,7 @@ int fringe = 0;
 int removeLow = 0;
 int removeHi = -1;  // -1 so that we can check if enabled using removeLow <= removeHi
 bool verbose_remove = false;
+bool fix_endpoints = false;
 
 const char* conflicts[][2] = {{"-p", "-check"}, {"-trials", "-check"}, {"-report", "-check"}, {"-try-all", "-check"}, {"-no-print-sets", "-check"}};
 
@@ -104,10 +105,12 @@ void process_args(int argc, char **argv) {
         } else if (strcmp("-report-symmetry", argv[0]) == 0) {
             --argc; ++argv;
             report_symmetry = true;
+        } else if (strcmp("-fix-endpoints", argv[0]) == 0) {
+            --argc; ++argv;
+            fix_endpoints = true;
         } else if (strcmp("-try-all", argv[0]) == 0) {
             --argc; ++argv;
             try_all = true;
-            NUM_TRIALS = 1LL << N;
         } else if (strcmp("-check", argv[0]) == 0) {
             --argc; ++argv;
             check = true;
@@ -139,6 +142,7 @@ void process_args(int argc, char **argv) {
                       << "    -report-symmetry\tIf a set is going to be printed and is symmetric, append a note to that effect." << std::endl
                       << "    -try-all\t\tInstead of sampling randomly, just try every subset. Requires N < 64." << std::endl
                       << "    -check\t\tInstead of searching for MSTD sets, read sets one per line on stdin and compute sumsets and diffsets. (Default=" << check << ")." << std::endl
+                      << "    -fix-endpoints\tAlways generate sets that have both endpoints. (Default=" << fix_endpoints << ")." << std::endl
                       << "    -fringe NUM\t\tInstead of computing the entire sumset/diffset, compute only the contribution from the NUM-fringe. 0 to disable. (Default=" << fringe << ")." << std::endl
                       << "    -remove LOW HI\tRemove all elements in range [LOW,HI], inclusive, before processing. Requires -check. (Default=[empty range])." << std::endl
                       << "    -verbose-remove\tReport which elements are actually removed. Only effective if -remove is thrown. (Default=" << verbose_remove << ")." << std::endl
@@ -159,6 +163,14 @@ void process_args(int argc, char **argv) {
     if (try_all && N >= 64) {
         std::cout << "Cannot try all subsets when N >= 64." << std::endl;
         exit(1);
+    }
+
+    if (try_all) {
+        NUM_TRIALS = 1LL << N;
+    }
+
+    if (try_all && fix_endpoints) {
+        NUM_TRIALS >>= 2;
     }
 }
 
@@ -269,9 +281,16 @@ bool is_fringe_mstd(int fringe, const char* set, char* sumset, char* diffset, in
     return sums > diffs;
 }
 
+inline int minSeedIndex() {
+    return fix_endpoints ? 1 : 0;
+}
+inline int seedIndexUB() {
+    return fix_endpoints ? N-1 : N;
+}
+
 void seedFast(G3D::Random& r, char* set) {
     G3D::uint32 data = r.bits();
-    for (int i = 0; i < N; ++i) {
+    for (int i = minSeedIndex(); i < seedIndexUB(); ++i) {
         if (i % 32 == 31) {
             data = r.bits();
         }
@@ -281,7 +300,7 @@ void seedFast(G3D::Random& r, char* set) {
 }
 
 void seedProb(G3D::Random& r, char* set) {
-    for (int i = 0; i < N; ++i) {
+    for (int i = minSeedIndex(); i < seedIndexUB(); ++i) {
         if (r.uniform() < p) {
             set[i] = 1;
         } else {
@@ -291,7 +310,7 @@ void seedProb(G3D::Random& r, char* set) {
 }
 
 void seed(long long s, char* set) {
-    for (int i = 0; i < N; ++i) {
+    for (int i = minSeedIndex(); i < seedIndexUB(); ++i) {
         set[i] = s & 1;
         s >>= 1;
     }
@@ -407,6 +426,10 @@ int main(int argc, char **argv) {
                 }
             }
         } else {
+            if (fix_endpoints) {
+                set[0] = 1;
+                set[N-1] = 1;
+            }
 #           pragma omp for nowait schedule(guided)
             for (long long i = 0; i < NUM_TRIALS; ++i) {
                 if (try_all) {
