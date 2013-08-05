@@ -7,10 +7,10 @@
 
 #include <cstdlib>
 
-static DenseSet2d sum_set(DOUBLE(XSIZE),DOUBLE(YSIZE));
-static DenseSet2d diff_set(DOUBLE(XSIZE),DOUBLE(YSIZE));
 
-void compute_sizes(const SparseSet2d& set, int& sum_size, int& diff_size) {
+void compute_sizes(const SparseSet2d& set,
+                   DenseSet2d& sum_set, DenseSet2d& diff_set,
+                   int& sum_size, int& diff_size) {
     sum_set.clear();
     diff_set.clear();
 
@@ -53,8 +53,8 @@ void compute_sizes(const SparseSet2d& set, int& sum_size, int& diff_size) {
     
 }
 
-bool is_mstd(const SparseSet2d& set) {
+bool is_mstd(const SparseSet2d& set, DenseSet2d& sum_set, DenseSet2d& diff_set) {
     int sums, diffs;
-    compute_sizes(set, sums, diffs);
+    compute_sizes(set, sum_set, diff_set, sums, diffs);
     return sums > diffs;
 }

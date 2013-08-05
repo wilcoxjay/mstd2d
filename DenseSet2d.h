@@ -60,7 +60,7 @@ public:
     
 };
 
-std::ostream& operator<<(std::ostream& os, const DenseSet2d& set) {
+inline std::ostream& operator<<(std::ostream& os, const DenseSet2d& set) {
     os << "{";
     bool started = false;
     for (int i = 0; i < set.x(); ++i) {
