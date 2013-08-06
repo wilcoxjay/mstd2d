@@ -21,7 +21,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
 #include "zip.h"
 #endif
 
@@ -91,7 +91,7 @@ std::string resolveFilename(const std::string& filename) {
     return format("%s/%s", buffer, filename.c_str());
 }
 
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
 bool zipfileExists(const std::string& filename) {
     std::string    outZipfile;
     std::string    outInternalFile;
@@ -110,7 +110,7 @@ std::string readWholeFile(const std::string& filename) {
     FileSystem::markFileUsed(filename);
     std::string zipfile;
 
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
     if (! FileSystem::inZipfile(filename, zipfile)) {
 #endif
         // Not in zipfile
@@ -132,7 +132,7 @@ std::string readWholeFile(const std::string& filename) {
         s = std::string(buffer);
 
         System::alignedFree(buffer);
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
     } else {
 
         // In zipfile
@@ -178,7 +178,7 @@ int64 fileLength(const std::string& filename) {
     
     if (result == -1) {
         std::string zip, contents;
-        #ifndef __CYGWIN__
+        #ifndef __NO_ZIP__
         if(zipfileExists(filename, zip, contents)){
             int64 requiredMem;
 
@@ -197,7 +197,7 @@ int64 fileLength(const std::string& filename) {
         } else {
             #endif
         return -1;
-        #ifndef __CYGWIN__
+        #ifndef __NO_ZIP__
         }
         #endif
     }
@@ -296,7 +296,7 @@ void createDirectory(
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
 /* Helper methods for zipfileExists()*/
 // Given a string (the drive) and an array (the path), computes the directory
 static void _zip_resolveDirectory(std::string& completeDir, const std::string& drive, const Array<std::string>& path, const int length){
@@ -683,7 +683,7 @@ static void getFileOrDirListNormal
 }
 
 
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
 /**
  @param path   The zipfile name (no trailing slash)
  @param prefix Directory inside the zipfile. No leading slash, must have trailing slash if non-empty.
@@ -780,7 +780,7 @@ static void determineFileOrDirList(
             // .zip should only work if * is specified as the Base + Ext
             // Here, we have been asked for the root's contents
             debugAssertM(filenameBaseExt(filespec) == "*", "Can only call getFiles/getDirs on zipfiles using '*' wildcard");
-            #ifndef __CYGWIN__
+            #ifndef __NO_ZIP__
             getFileOrDirListZip(path, prefix, files, wantFiles, includePath);
             #endif
         } else {
@@ -788,7 +788,7 @@ static void determineFileOrDirList(
             getFileOrDirListNormal(filespec, files, wantFiles, includePath);
         }
     } 
-    #ifndef __CYGWIN__
+    #ifndef __NO_ZIP__
     else if (zipfileExists(filenamePath(filespec), path, prefix)) {
         // .zip should only work if * is specified as the Base + Ext
         // Here, we have been asked for the contents of a folder within the .zip

@@ -14,7 +14,7 @@
 #include "G3D/FileSystem.h"
 #include "G3D/stringutils.h"
 #include "G3D/Array.h"
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
 #include <zlib.h>
 #endif
 #include "G3D/Log.h"
@@ -275,7 +275,7 @@ bool BinaryOutput::ok() const {
 }
 
 
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
 
 void BinaryOutput::compress(int level) {
     if (m_alreadyWritten > 0) {

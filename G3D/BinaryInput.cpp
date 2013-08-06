@@ -38,7 +38,7 @@
 #include "G3D/fileutils.h"
 #include "G3D/Log.h"
 #include "G3D/FileSystem.h"
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
 #include <zlib.h>
 #include <zip.h>
 #endif
@@ -49,7 +49,7 @@ namespace G3D {
 const bool BinaryInput::NO_COPY = false;
 
 
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
 /** Helper used by the constructors for decompression */
 static uint32 readUInt32FromBuffer(const uint8* data, bool swapBytes) {
     if (swapBytes) {
@@ -84,7 +84,7 @@ BinaryInput::BinaryInput(
     setEndian(dataEndian);
 
     if (compressed) {
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
         // Read the decompressed size from the first 4 bytes
         m_length = readUInt32FromBuffer(data, m_swapBytes);
 
@@ -130,7 +130,7 @@ BinaryInput::BinaryInput
 
     setEndian(fileEndian);
     
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
     std::string zipfile;
     if (FileSystem::inZipfile(m_filename, zipfile)) {
         // Load from zipfile
@@ -160,7 +160,7 @@ BinaryInput::BinaryInput
         }
         zip_close( z );
 
-        #ifndef __CYGWIN__
+        #ifndef __NO_ZIP__
         if (compressed) {
             decompress();
         }
@@ -212,7 +212,7 @@ BinaryInput::BinaryInput
     FileSystem::fclose(file);
     file = NULL;
 
-    #ifndef __CYGWIN__
+    #ifndef __NO_ZIP__
     if (compressed) {
         if (m_bufferLength != m_length) {
             throw "Not enough memory to load compressed file. (2)";
@@ -246,7 +246,7 @@ std::string BinaryInput::readFixedLengthString(int numBytes) {
 }
 
 
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
 void BinaryInput::decompress() {
     // Decompress
     // Use the existing buffer as the source, allocate

@@ -12,7 +12,7 @@
 #include "G3D/fileutils.h"
 #include <sys/stat.h>
 #include <sys/types.h>
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
 #include "zip.h"
 #endif
 #include "G3D/g3dfnmatch.h"
@@ -37,7 +37,7 @@
 #   define strnicmp strncasecmp 
 #endif
 
-#ifdef __CYGWIN__
+#ifdef __NO_ZIP__
 #   define stat64 stat
 #endif
 
@@ -86,7 +86,7 @@ bool FileSystem::Dir::contains(const std::string& f, bool caseSensitive) const {
 }
 
     
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
 void FileSystem::Dir::computeZipListing(const std::string& zipfile, const std::string& _pathInsideZipfile) {
     const std::string& pathInsideZipfile = FilePath::canonicalize(_pathInsideZipfile);
     struct zip* z = zip_open( FilePath::removeTrailingSlash(zipfile).c_str(), ZIP_CHECKCONS, NULL );
@@ -235,7 +235,7 @@ FileSystem::Dir& FileSystem::getContents(const std::string& path, bool forceUpda
             }
 
         } else {
-            #ifndef __CYGWIN__
+            #ifndef __NO_ZIP__
             std::string zip;
 
             if (exists && isZipfile(path)) {
@@ -586,7 +586,7 @@ int64 FileSystem::_size(const std::string& _filename) {
     if (result == -1) {
 
         std::string zip, contents;
-#ifndef __CYGWIN__
+#ifndef __NO_ZIP__
         if (zipfileExists(filename, zip, contents)) {
 
             int64 requiredMem;

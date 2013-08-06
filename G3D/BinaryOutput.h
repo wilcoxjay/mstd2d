@@ -131,7 +131,7 @@ public:
 
     ~BinaryOutput();
     
-    #ifndef __CYGWIN__
+    #ifndef __NO_ZIP__
     /** Compresses the data in the buffer in place, 
         preceeding it with a little-endian uint32 indicating 
         the uncompressed size.

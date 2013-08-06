@@ -139,7 +139,7 @@ private:
     BinaryInput& operator=(const BinaryInput&);
     bool operator==(const BinaryInput&);
 
-    #ifndef __CYGWIN__
+    #ifndef __NO_ZIP__
     /** Buffer is compressed; replace it with a decompressed version */
     void decompress();
     #endif
