@@ -42,8 +42,15 @@ int main(int argc, char** argv) {
     assert(1 <= X && X <= 1000);
     assert(1 <= Y && Y <= 1000);
 
-    long long count = 0;
-    long long trials = 0;
+    int num_groups = 3;
+
+    long long count[num_groups];
+    long long trials[num_groups];
+    int i;
+    for (i = 0; i < num_groups; i++) {
+        count[i] = 0;
+        trials[i] = 0;
+    }
 
     #pragma omp parallel
     {
@@ -74,6 +81,8 @@ int main(int argc, char** argv) {
         DenseSet2d diff_set(2*X + 1, 2*Y + 1);
         SparseSet2d my_set;
 
+        int index = tid % num_groups;
+
         long long my_trials = 0;
         long long trials_to_add = 0;
         while (1) {
@@ -84,27 +93,40 @@ int main(int argc, char** argv) {
                 #pragma omp critical 
                 {
                     my_count += count_to_add;
-                    count += count_to_add;
+                    count[index] += count_to_add;
                     count_to_add = 0;
 
                     my_trials += trials_to_add;
-                    trials += trials_to_add;
+                    trials[index] += trials_to_add;
                     trials_to_add = 0;
+
+                    long long glob_count  = 0;
+                    long long glob_trials = 0;
+                    int j;
+                    for (j = 0; j < num_groups; j++) {
+                        glob_count += count[j];
+                        glob_trials += trials[j];
+                    }
 
                     std::cout << "tid "
                               << std::setw(2) << std::right
                               << tid
+                              << " group "
+                              << index
                               << " itr "
-                              << std::setw(15) << std::left
+                              << std::setw(10) << std::left
                               << my_trials
                               << " sec = " 
-                              << std::setw(10) << std::left
+                              << std::setw(6) << std::left
                               << (now.tv_sec - start.tv_sec)
                               << " local prop = "
-                              << std::setw(15) << std::left
+                              << std::setw(12) << std::left
                               << ((double)my_count)/((double)my_trials)
+                              << " group prop "
+                              << std::setw(12) << std::left
+                              << ((double)count[index])/((double)trials[index])
                               << " global prop = "
-                              << ((double)count)/((double)trials)
+                              << ((double)glob_count)/((double)glob_trials)
                               << std::endl;
                 }
             }
