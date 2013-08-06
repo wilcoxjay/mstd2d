@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
                     trials += trials_to_add;
                     trials_to_add = 0;
 
-                    std::cerr << "tid "
+                    std::cout << "tid "
                               << std::setw(2) << std::right
                               << tid
                               << " itr "
