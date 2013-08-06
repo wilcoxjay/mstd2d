@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
         DenseSet2d diff_set(2*X + 1, 2*Y + 1);
         SparseSet2d my_set;
 
-        int index = tid / num_groups;
+        int index = tid % num_groups;
 
         long long my_trials = 0;
         long long trials_to_add = 0;
