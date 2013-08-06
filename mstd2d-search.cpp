@@ -119,13 +119,13 @@ int main(int argc, char** argv) {
                               << " sec = " 
                               << std::setw(6) << std::left
                               << (now.tv_sec - start.tv_sec)
-                              << " local prop = "
+                              << " local = "
                               << std::setw(12) << std::left
                               << ((double)my_count)/((double)my_trials)
-                              << " group prop "
+                              << " group = "
                               << std::setw(12) << std::left
                               << ((double)count[index])/((double)trials[index])
-                              << " global prop = "
+                              << " global = "
                               << ((double)glob_count)/((double)glob_trials)
                               << std::endl;
                 }
@@ -135,35 +135,14 @@ int main(int argc, char** argv) {
             compute_sizes(my_set, sum_set, diff_set, sumsize, diffsize);
             if (sumsize > diffsize) {
                 count_to_add++;
+                #pragma omp critical
+                {
+                    std::cout << "(" << my_set.size() << "," << sumsize << "," << diffsize << ") "
+                              << my_set << std::endl;
+                }
             }
         }
     }
 
-    //std::cout << "proportion mstd found: " << ((double)count) / my_trials << std::endl;
-
-    // int id;
-    // unsigned long long step;
-    // if (argc == 3) {
-    //     id = atoi(argv[1]);
-    //     int max = atoi(argv[2]);
-    //     step = ((UPPER_BOUND + max - 1) / max);
-    // } else {
-    //     // default to searching whole space
-    //     id = 0;
-    //     step = UPPER_BOUND;  
-    // }
-    // 
-    // unsigned long long i;
-    // unsigned long long start = id * step;
-    // unsigned long long end = (id + 1) * step;
-    // std::cout << "thread id " << id << "searching from "
-    //           << start << " to " << end << std::endl;
-    // for (i = start; i < end ; ++i) {
-    //     make_set(my_set, i);
-    //     if (is_mstd(my_set)) {
-    //         my_set.print();
-    //         std::cout << "    (with seed " << i << ")" << std::endl;
-    //     }
-    // }
     return 0;
 }
