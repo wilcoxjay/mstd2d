@@ -28,21 +28,72 @@ void make_set(int x, int y, SparseSet2d& s, G3D::Random& r) {
     }
 }
 
+
+
 #include <sys/time.h>
 #include <omp.h>
 #include <cstdlib>
 #include <cassert>
-int main(int argc, char** argv) {
-    if (argc < 3) {
+#include <climits>
+
+
+int X, Y;
+int num_groups = 3;
+int bias_low = 0;
+int bias_high = -1;
+long long iters = LLONG_MAX;
+
+void parse_args(int argc, char** argv) {
+    argc--; argv++;
+    if (argc < 2) {
         std::cout << "need x and y on command line." << std::endl;
         exit(1);
     }
-    int X = atoi(argv[1]);
-    int Y = atoi(argv[2]);
+    X = atoi(argv[0]);
+    argc--; argv++;
+    Y = atoi(argv[0]);
+    argc--; argv++;
+
+    while (argc > 0) {
+        if (strcmp(argv[0], "--groups") == 0) {
+            argc--; argv++;
+            assert(argc > 0);
+            num_groups = atoi(argv[0]);
+            argc--; argv++;
+        } else if (strcmp(argv[0], "--bias-low") == 0) {
+            argc--; argv++;
+            assert(argc > 0);
+            bias_low = atoi(argv[0]);
+            argc--; argv++;
+        } else if (strcmp(argv[0], "--bias-high") == 0) {
+            argc--; argv++;
+            assert(argc > 0);
+            bias_high = atoi(argv[0]);
+            argc--; argv++;
+        } else if (strcmp(argv[0], "--iters") == 0) {
+            argc--; argv++;
+            assert(argc > 0);
+            iters = strtoll(argv[0], NULL, 10);
+            argc--; argv++;
+        } else {
+            std::cout << "unknown option: " << argv[0] << std::endl;
+            exit(1);
+        }
+    }
+
+    if (bias_high == -1) {
+        bias_high = X * Y;
+    }
+
     assert(1 <= X && X <= 1000);
     assert(1 <= Y && Y <= 1000);
+    assert(1 <= num_groups && num_groups <= 10);
+    assert(0 <= bias_low && bias_low < bias_high && bias_high <= X*Y);
 
-    int num_groups = 3;
+}
+
+int main(int argc, char** argv) {
+    parse_args(argc, argv);
 
     long long count[num_groups];
     long long trials[num_groups];
@@ -60,8 +111,9 @@ int main(int argc, char** argv) {
         const int tid = omp_get_thread_num();
 
         // intentional overflow
-        G3D::uint32 seed = (G3D::uint32)(start.tv_sec + (13 * start.tv_usec) +
-                                         (1299673 * 1299673 * (tid+1)));  
+        G3D::uint32 seed = (G3D::uint32)((unsigned int)start.tv_sec +
+                                         (13U * (unsigned int)start.tv_usec) +
+                                         (1299673U * (1299673U * (unsigned int)(tid+1))));  
         #pragma omp critical 
         {
             std::cout << "thread " << std::setw(2) << std::right << tid
@@ -71,7 +123,7 @@ int main(int argc, char** argv) {
             
         G3D::Random r(seed, false);
     
-        int report_freq = 1000000;
+        long long report_freq = 1000000;
 
         long long my_count = 0;
         long long count_to_add = 0;
@@ -85,7 +137,7 @@ int main(int argc, char** argv) {
 
         long long my_trials = 0;
         long long trials_to_add = 0;
-        while (1) {
+        while (my_trials < iters) {
             trials_to_add++;
             if (trials_to_add % report_freq == 0) {
                 gettimeofday(&now, 0);
@@ -132,17 +184,22 @@ int main(int argc, char** argv) {
             }
 
             make_set(X, Y, my_set, r);
-            compute_sizes(my_set, sum_set, diff_set, sumsize, diffsize);
-            if (sumsize > diffsize) {
-                count_to_add++;
-                #pragma omp critical
-                {
-                    std::cout << "(" << my_set.size() << "," << sumsize << "," << diffsize << ") "
-                              << my_set << std::endl;
+            if (bias_low <= my_set.size() && my_set.size() <= bias_high) {
+                compute_sizes(my_set, sum_set, diff_set, sumsize, diffsize);
+                if (sumsize > diffsize) {
+                    count_to_add++;
+                    #pragma omp critical
+                    {
+                        std::cout << "(" << my_set.size() << "," << sumsize << "," << diffsize << ") "
+                                  << my_set << std::endl;
+                    }
                 }
             }
         }
+        #pragma omp critical
+        {
+            std::cout << "tid " << tid << " exiting." << std::endl;
+        }
     }
-
     return 0;
 }
